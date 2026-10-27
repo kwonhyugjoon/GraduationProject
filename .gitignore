@@ -1,0 +1,40 @@
+# Unreal-generated files; applies to every project in this repository.
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Backups/
+**/Build/PlayableDemo/
+**/Build/StagedBuilds/
+
+# Generated deliveries and review output.
+Review/
+Validation/
+*.zip
+*.7z
+*.pak
+*.ucas
+*.utoc
+*.log
+
+# Local tools, IDE state and temporary files.
+.tools/
+.cache/
+.vs/
+.idea/
+__pycache__/
+*.pyc
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.user
+*.tmp
+*.blend1
+*.blend2
+Thumbs.db
+Desktop.ini
+.DS_Store
+.env
+.env.local

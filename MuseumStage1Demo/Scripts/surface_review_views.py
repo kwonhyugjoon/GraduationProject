@@ -1,0 +1,22 @@
+"""Repeatable close views of the reported surfaces and other repaired joins."""
+VIEWS={
+    'SurfaceFloorA':((1600,700,165),(1700,800,3.5)),
+    'SurfaceFloorB':((1600,-750,165),(1700,-650,3.5)),
+    'SurfaceFloorC':((-1600,400,165),(-1500,500,3.5)),
+    'SurfaceCornerA':((2130,1000,165),(2390,1250,262)),
+    'SurfaceCornerB':((2130,-1000,165),(2390,-1250,262)),
+    'SurfaceCornerC':((-1850,1160,170),(-2100,1410,262)),
+    'SurfaceStair':((450,1000,510),(0,1340,420)),
+    'SurfaceWindow':((2600,-1050,620),(2945,-1125,590)),
+    'SurfaceOuterCornerA':((600,150,165),(850,250,262)),
+    'SurfaceOuterCornerASide':((630,120,170),(850,250,262)),
+    'SurfaceOuterCornerB':((600,-150,165),(850,-250,262)),
+    'SurfaceOuterCornerBSide':((630,-120,170),(850,-250,262)),
+    'SurfaceOuterCornerC':((-700,-1200,165),(-950,-1410,262)),
+    'SurfaceOuterCornerCSide':((-730,-1170,170),(-950,-1410,262)),
+    'SurfaceRailingA':((2670,0,570),(2450,100,470)),
+    'SurfaceRailingB':((-2310,500,570),(-2130,600,470)),
+    'SurfaceStairRailing':((450,850,330),(285,965,230)),
+    'StairBackfillLeft':((1100,1300,230),(0,1450,240)),
+    'StairBackfillLanding':((700,600,230),(0,1200,250)),
+}

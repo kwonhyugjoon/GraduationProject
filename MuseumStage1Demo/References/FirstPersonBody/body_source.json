@@ -1,0 +1,370 @@
+{
+  "source": "Assets/Player/night_patrol_v15/night_patrol_v15_uv.blend",
+  "removed_head_meshes": [
+    "Brow_End_r",
+    "Brow_l",
+    "Neck_Visible",
+    "Eye_l",
+    "Eye_r",
+    "Skin_Head_Continuous",
+    "Wide_Stub_Nose",
+    "Brow_End_l",
+    "Deadpan_Mouth",
+    "Brow_r"
+  ],
+  "body_meshes": [
+    "Pocket_Button_r",
+    "Simple_Tie",
+    "Tie_Knot",
+    "Zipper_2",
+    "Zipper_Pull",
+    "Blank_Staff_Badge",
+    "Chest_Pocket_l",
+    "Cuff_l",
+    "Hand_Continuous_r",
+    "Pocket_Flap_r",
+    "Sole_Rim_r",
+    "Zipper_3",
+    "Badge_Clip",
+    "Chest_Pocket_r",
+    "Cuff_r",
+    "Folded_Uniform_Collar",
+    "Lower_Continuous",
+    "Pocket_Button_l",
+    "Shirt_Neck",
+    "Shoe_Continuous_l",
+    "Upper_Continuous",
+    "Zipper_0",
+    "Hand_Continuous_l",
+    "Shoe_Continuous_r",
+    "Sole_Rim_l",
+    "Pocket_Flap_l",
+    "Shirt_V",
+    "Zipper_1"
+  ],
+  "bones": [
+    {
+      "name": "root",
+      "parent": null,
+      "head": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        15.000000953674316
+      ]
+    },
+    {
+      "name": "pelvis",
+      "parent": "root",
+      "head": [
+        0.0,
+        0.0,
+        68.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        79.0
+      ]
+    },
+    {
+      "name": "spine_01",
+      "parent": "pelvis",
+      "head": [
+        0.0,
+        0.0,
+        79.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        94.0
+      ]
+    },
+    {
+      "name": "spine_02",
+      "parent": "spine_01",
+      "head": [
+        0.0,
+        0.0,
+        94.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        109.0
+      ]
+    },
+    {
+      "name": "spine_03",
+      "parent": "spine_02",
+      "head": [
+        0.0,
+        0.0,
+        109.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        124.0
+      ]
+    },
+    {
+      "name": "neck",
+      "parent": "spine_03",
+      "head": [
+        0.0,
+        0.0,
+        124.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        133.0
+      ]
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "head": [
+        0.0,
+        0.0,
+        133.0
+      ],
+      "tail": [
+        0.0,
+        0.0,
+        172.0
+      ]
+    },
+    {
+      "name": "clavicle_r",
+      "parent": "spine_03",
+      "head": [
+        -6.0,
+        0.0,
+        122.0
+      ],
+      "tail": [
+        -24.899999618530273,
+        0.0,
+        115.69999694824219
+      ]
+    },
+    {
+      "name": "upperarm_r",
+      "parent": "clavicle_r",
+      "head": [
+        -24.899999618530273,
+        0.0,
+        115.69999694824219
+      ],
+      "tail": [
+        -38.48318099975586,
+        2.5,
+        99.51219177246094
+      ]
+    },
+    {
+      "name": "lowerarm_r",
+      "parent": "upperarm_r",
+      "head": [
+        -38.48318099975586,
+        2.5,
+        99.51219177246094
+      ],
+      "tail": [
+        -54.75469970703125,
+        -0.800000011920929,
+        80.12055969238281
+      ]
+    },
+    {
+      "name": "hand_r",
+      "parent": "lowerarm_r",
+      "head": [
+        -54.75469970703125,
+        -0.800000011920929,
+        80.12055969238281
+      ],
+      "tail": [
+        -63.50086975097656,
+        -3.0983784198760986,
+        62.341861724853516
+      ]
+    },
+    {
+      "name": "elbow_corrective_r",
+      "parent": "upperarm_r",
+      "head": [
+        -38.48318099975586,
+        2.5,
+        99.51219177246094
+      ],
+      "tail": [
+        -44.85712814331055,
+        1.207310676574707,
+        91.91602325439453
+      ]
+    },
+    {
+      "name": "clavicle_l",
+      "parent": "spine_03",
+      "head": [
+        6.0,
+        0.0,
+        122.0
+      ],
+      "tail": [
+        24.899999618530273,
+        0.0,
+        115.69999694824219
+      ]
+    },
+    {
+      "name": "upperarm_l",
+      "parent": "clavicle_l",
+      "head": [
+        24.899999618530273,
+        0.0,
+        115.69999694824219
+      ],
+      "tail": [
+        38.48318099975586,
+        2.5,
+        99.51219177246094
+      ]
+    },
+    {
+      "name": "lowerarm_l",
+      "parent": "upperarm_l",
+      "head": [
+        38.48318099975586,
+        2.5,
+        99.51219177246094
+      ],
+      "tail": [
+        54.75469970703125,
+        -0.800000011920929,
+        80.12055969238281
+      ]
+    },
+    {
+      "name": "hand_l",
+      "parent": "lowerarm_l",
+      "head": [
+        54.75469970703125,
+        -0.7999998331069946,
+        80.12055969238281
+      ],
+      "tail": [
+        63.50086975097656,
+        -3.0983777046203613,
+        62.341861724853516
+      ]
+    },
+    {
+      "name": "elbow_corrective_l",
+      "parent": "upperarm_l",
+      "head": [
+        38.48318099975586,
+        2.5,
+        99.51219177246094
+      ],
+      "tail": [
+        44.85712814331055,
+        1.207310676574707,
+        91.91602325439453
+      ]
+    },
+    {
+      "name": "thigh_r",
+      "parent": "pelvis",
+      "head": [
+        -13.300000190734863,
+        1.0,
+        68.0
+      ],
+      "tail": [
+        -15.600000381469727,
+        2.5,
+        38.5
+      ]
+    },
+    {
+      "name": "calf_r",
+      "parent": "thigh_r",
+      "head": [
+        -15.600000381469727,
+        2.5,
+        38.5
+      ],
+      "tail": [
+        -18.299999237060547,
+        4.0,
+        18.19999885559082
+      ]
+    },
+    {
+      "name": "foot_r",
+      "parent": "calf_r",
+      "head": [
+        -18.299999237060547,
+        4.0,
+        18.19999885559082
+      ],
+      "tail": [
+        -32.60000228881836,
+        -24.0,
+        8.5
+      ]
+    },
+    {
+      "name": "thigh_l",
+      "parent": "pelvis",
+      "head": [
+        13.300000190734863,
+        1.0,
+        68.0
+      ],
+      "tail": [
+        15.600000381469727,
+        2.5,
+        38.5
+      ]
+    },
+    {
+      "name": "calf_l",
+      "parent": "thigh_l",
+      "head": [
+        15.600000381469727,
+        2.5,
+        38.5
+      ],
+      "tail": [
+        18.299999237060547,
+        4.0,
+        18.19999885559082
+      ]
+    },
+    {
+      "name": "foot_l",
+      "parent": "calf_l",
+      "head": [
+        18.299999237060547,
+        4.0,
+        18.19999885559082
+      ],
+      "tail": [
+        32.60000228881836,
+        -24.0,
+        8.5
+      ]
+    }
+  ],
+  "original_source_unchanged": true
+}

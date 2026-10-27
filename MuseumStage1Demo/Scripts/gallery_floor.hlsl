@@ -1,0 +1,21 @@
+// Centimetre world coordinates keep the tile size identical across all slabs.
+float2 p = WorldPos.xy;
+float2 uv = p / 100.0;
+float2 cell = floor(uv);
+float2 f = frac(uv);
+float edge = min(min(f.x, 1.0-f.x), min(f.y, 1.0-f.y));
+float tile = smoothstep(0.006, 0.017, edge);
+float variation = frac(sin(dot(cell, float2(127.1, 311.7))) * 43758.5453);
+float grain = frac(sin(dot(floor(p * 2.0), float2(23.14, 91.71))) * 19341.37);
+float vein = pow(saturate(1.0-abs(sin(p.x*.009+p.y*.013+sin(p.y*.02)*.7))), 12.0);
+float3 stone = lerp(float3(.27,.28,.285), float3(.34,.345,.335), variation);
+stone += vein*.025 + (grain-.5)*.012;
+float frameDistance = min(min(abs(p.x-2460.0),abs(p.x+2140.0)), abs(abs(p.y)-1470.0));
+float frame = 1.0-smoothstep(10.0, 15.0, frameDistance);
+float inlayDistance = min(min(abs(p.x-2483.0),abs(p.x+2163.0)), abs(abs(p.y)-1493.0));
+float inlay = 1.0-smoothstep(1.2, 2.0, inlayDistance);
+stone *= lerp(1.0, .42, frame);
+stone = lerp(stone, float3(.30,.20,.09), inlay*.8);
+float3 color = lerp(float3(.055,.058,.065), stone, tile);
+float roughness = lerp(.84, .55+variation*.09, tile);
+return float4(color, roughness);

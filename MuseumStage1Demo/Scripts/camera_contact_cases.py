@@ -1,0 +1,23 @@
+"""Contact fixtures in plan coordinates (the runtime mirrors X)."""
+CASES=[
+ ('north_staff_button',(788,1410),(0,-1),0),
+ ('south_staff_button',(919,-1474.5),(-1,0),0),
+ ('north_staff_door',(650,1416),(0,-1),0),
+ ('south_staff_door',(926,-1612.5),(-1,0),0),
+ ('gallery_a_wall',(-1600,236),(0,-1),0),
+ ('gallery_a_jamb',(-836,550),(1,0),0),
+ ('gallery_b_wall',(-1600,-236),(0,1),0),
+ ('gallery_c_wall',(936,400),(-1,0),0),
+ ('gallery_c_corner',(936,-1350),(-1,0),0),
+ ('outside_left_wall',(-2967.5,300),(1,0),0),
+ ('rear_wall',(-1600,1767.5),(0,-1),0),
+ ('stair_backfill',(-300,1580),(-1,0),0),
+ ('staff_inside_wall',(316,1580),(1,0),0),
+ ('upper_left_window',(-2944.5,-1125),(1,0),450),
+ ('upper_right_window',(2444.5,375),(-1,0),450),
+ ('stage2_door',(-2991,0),(1,0),450),
+ ('stage3_door',(2491,0),(-1,0),450),
+ ('stage2_button',(-2935,155),(1,0),450),
+ ('reception_sign',(0,-1105),(0,-1),0),
+ ('gallery_lamp_post',(-2302.5,320),(1,0),0),
+]

@@ -1,0 +1,18 @@
+{
+  "SkinColor": {
+    "material": "M_Skin_Color",
+    "scope": "head, ears, nose, neck and hands"
+  },
+  "UpperColor": {
+    "material": "M_Upper_Color",
+    "scope": "jacket body, sleeves, cuffs, collar, pockets and hem"
+  },
+  "LowerColor": {
+    "material": "M_Lower_Color",
+    "scope": "trouser waist, hips and both legs"
+  },
+  "ShoesColor": {
+    "material": "M_Shoes_Color",
+    "scope": "both shoes, including soles"
+  }
+}
