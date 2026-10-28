@@ -5,6 +5,7 @@ ROOT=Path(unreal.Paths.project_dir())
 sys.path.insert(0,str(ROOT/'Scripts'))
 from stage1_layout import make_layout
 from camera_collision import configure_architecture_collision
+from patrol_equipment import LIGHT_SCALE,SKY_INTENSITY,MOON_INTENSITY,configure_equipment
 ASSET_ROOT='/Game/Stage1'
 MAP=ASSET_ROOT+'/Maps/L_MuseumStage1'
 def rotation(values):
@@ -205,7 +206,7 @@ for i,entry in enumerate(layout['lights']):
     actor.set_actor_label('Museum_Warm_Light_%02d'%i);actor.set_folder_path('Stage1/Lighting')
     light=actor.get_component_by_class(unreal.PointLightComponent)
     light.set_mobility(unreal.ComponentMobility.MOVABLE)
-    light.set_intensity(entry['power']);light.set_attenuation_radius(entry['radius'])
+    light.set_intensity(entry['power']*LIGHT_SCALE);light.set_attenuation_radius(entry['radius'])
     light.set_light_color(unreal.LinearColor(*(v/255 for v in entry['color']),1))
     light.set_cast_shadows(False)
     light.set_editor_property('source_radius',18)
@@ -213,7 +214,7 @@ for i,entry in enumerate(layout['lights']):
 sun=actors.spawn_actor_from_class(unreal.DirectionalLight,unreal.Vector(0,0,1200),rotation((-45,-25,0)))
 sun.set_actor_label('Museum_Soft_Key_Light');sun.set_folder_path('Stage1/Lighting')
 sunlight=sun.get_component_by_class(unreal.DirectionalLightComponent)
-sunlight.set_mobility(unreal.ComponentMobility.MOVABLE);sunlight.set_intensity(.20)
+sunlight.set_mobility(unreal.ComponentMobility.MOVABLE);sunlight.set_intensity(MOON_INTENSITY)
 sunlight.set_light_color(unreal.LinearColor(.48,.60,.85,1));sunlight.set_cast_shadows(True)
 sky=actors.spawn_actor_from_class(unreal.SkyLight,unreal.Vector(0,0,1000))
 sky.set_actor_label('Museum_Ambient_Light');sky.set_folder_path('Stage1/Lighting')
@@ -222,7 +223,7 @@ cube=unreal.load_asset('/Engine/MapTemplates/Sky/DaylightAmbientCubemap')
 if cube:
     skycomp.set_editor_property('source_type',unreal.SkyLightSourceType.SLS_SPECIFIED_CUBEMAP)
     skycomp.set_editor_property('cubemap',cube)
-skycomp.set_intensity(.22)
+skycomp.set_intensity(SKY_INTENSITY)
 fog=actors.spawn_actor_from_class(unreal.ExponentialHeightFog,unreal.Vector(0,0,-300))
 fog.set_folder_path('Stage1/Lighting')
 fogcomp=fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
@@ -275,6 +276,8 @@ unreal.EditorAssetLibrary.save_loaded_asset(pawn)
 if unreal.EditorAssetLibrary.does_asset_exist(ASSET_ROOT+'/FirstPerson/Patrol/SK_PatrolWorld'):
     from first_person_pawn import configure_first_person_pawn
     configure_first_person_pawn(pawn)
+if unreal.EditorAssetLibrary.does_asset_exist('/Game/Stage1/Equipment/SM_PatrolFlashlightView'):
+    configure_equipment(pawn)
 mode_path=ASSET_ROOT+'/Blueprints/BP_Stage1Mode_FirstPerson'
 mode=unreal.load_asset(mode_path) if unreal.EditorAssetLibrary.does_asset_exist(mode_path) else assets.duplicate_asset('BP_Stage1Mode_FirstPerson',ASSET_ROOT+'/Blueprints',base_mode)
 unreal.get_default_object(mode.generated_class()).set_editor_property('default_pawn_class',pawn.generated_class())
@@ -320,7 +323,7 @@ report['temporary_exhibit_instances']=sum(len(v) for (mesh,mat,solid),v in layou
 assert report['temporary_exhibit_instances']==0,'Temporary exhibits remain in the generated map'
 report['partition_height_cm']=280
 report['staff_on_second_floor']=False
-report['night_lighting']={'skylight':.22,'moonlight':.20,'exposure_bias':-4.,'bloom':.20}
+report['night_lighting']={'skylight':SKY_INTENSITY,'moonlight':MOON_INTENSITY,'wall_light_scale':LIGHT_SCALE,'exposure_bias':-4.,'bloom':.20}
 report['generation_completed']=True
 (ROOT/'Saved/stage1_build_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 unreal.log('STAGE1_BUILD_COMPLETE '+str(report['geometry_instances']))

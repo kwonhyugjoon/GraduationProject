@@ -112,6 +112,8 @@ def tick(delta):
                 movement.stop_movement_immediately()
                 capsule=pawn.get_component_by_class(unreal.CapsuleComponent)
                 capsule.set_capsule_size(150.,175.,True)
+                # The resized clearance proxy does not use player equipment or sprinting.
+                pawn.get_component_by_class(unreal.PatrolEquipmentComponent).set_component_tick_enabled(False)
                 movement.set_editor_property('max_walk_speed',180.)
                 pawn.set_actor_location(unreal.Vector(600,-900,190),False,True)
                 state['phase']='tyranno';state['tyranno_point']=0;state['last_progress']=now

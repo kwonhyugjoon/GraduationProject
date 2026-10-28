@@ -3,6 +3,13 @@
   "EngineAssociation": "5.7",
   "Category": "Graduation Project",
   "Description": "Single-player museum stage-one walking prototype.",
+  "Modules": [
+    {
+      "Name": "MuseumStage1Demo",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
   "Plugins": [
     {
       "Name": "AndroidFileServer",
