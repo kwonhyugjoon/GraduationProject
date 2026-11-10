@@ -7,5 +7,6 @@ public class MuseumStage1Demo : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         if (Target.bBuildEditor) PrivateDependencyModuleNames.Add("ApplicationCore");
         PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
     }
 }

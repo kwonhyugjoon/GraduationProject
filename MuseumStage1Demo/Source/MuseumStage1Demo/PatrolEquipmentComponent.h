@@ -23,6 +23,9 @@ public:
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+    int32 GetHandSlot() const { return HandSlot; }
+    bool IsFlashlightOn() const { return bFlashlightOn; }
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Patrol")
     TObjectPtr<UStaticMesh> FlashlightViewMesh;
 
