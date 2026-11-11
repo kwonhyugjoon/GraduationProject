@@ -25,6 +25,7 @@ public:
 
     int32 GetHandSlot() const { return HandSlot; }
     bool IsFlashlightOn() const { return bFlashlightOn; }
+    bool IsManualReadingReady() const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Patrol")
     TObjectPtr<UStaticMesh> FlashlightViewMesh;
@@ -62,6 +63,8 @@ private:
     };
 
     void UpdateEquipmentTransition(float DeltaTime);
+    void ToggleManualReading();
+    float UpdateManualReading(float DeltaTime);
     void UpdateEquipmentView(float DeltaTime);
     void SwitchDisplayedEquipment();
     void RefreshEquipment();
@@ -78,6 +81,8 @@ private:
     int32 DisplayedHandSlot = 1;
     EEquipmentTransition TransitionState = EEquipmentTransition::Idle;
     float LowerProgress = 0.f;
+    bool bManualReading = false;
+    float ManualReadProgress = 0.f;
     float BobPhase = 0.f;
     double WallRetraction = 0.0;
     double WallProximity = 0.0;

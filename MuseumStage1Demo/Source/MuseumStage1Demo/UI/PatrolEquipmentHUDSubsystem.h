@@ -23,6 +23,9 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<UTexture2D>> HUDTextures;
 
+    UPROPERTY(Transient)
+    TObjectPtr<UTexture2D> ManualBookFrame;
+
     TSharedPtr<SWidget> HUD;
     TWeakObjectPtr<UGameViewportClient> HUDViewport;
 };

@@ -24,6 +24,11 @@ constexpr double WallInterpSpeed = 18.0;
 constexpr double BookChestClearance = 35.0;
 const FVector BookCenter(46.2, 0.0, -13.0);
 const FVector BookExtent(1.8, 11.4, 12.0);
+constexpr float ManualReadEnterDuration = .25f;
+constexpr float ManualReadExitDuration = .22f;
+const FVector ManualReadLocationOffset(-6.0, 0.0, 10.0);
+const FRotator ManualReadRotationOffset(6.0, 0.0, 0.0);
+constexpr double ManualReadSwayScale = .20;
 
 struct FEquipmentClearance
 {
@@ -101,6 +106,7 @@ void UPatrolEquipmentComponent::SelectHandSlot(int32 Slot)
 {
     if (Slot < 1 || Slot > 3 || Slot == HandSlot) return;
     HandSlot = Slot;
+    if (Slot != 2) bManualReading = false;
     RefreshFlashlight();
 }
 
@@ -109,6 +115,41 @@ void UPatrolEquipmentComponent::ToggleFlashlight()
     if (HandSlot != 1) return;
     bFlashlightOn = !bFlashlightOn;
     RefreshFlashlight();
+}
+
+void UPatrolEquipmentComponent::ToggleManualReading()
+{
+    if (HandSlot == 2 && DisplayedHandSlot == 2 && TransitionState == EEquipmentTransition::Idle
+        && NotebookView && NotebookView->GetStaticMesh())
+    {
+        bManualReading = !bManualReading;
+    }
+}
+
+bool UPatrolEquipmentComponent::IsManualReadingReady() const
+{
+    return HandSlot == 2 && DisplayedHandSlot == 2 && bManualReading && ManualReadProgress >= 1.f
+        && TransitionState == EEquipmentTransition::Idle && NotebookView && NotebookView->IsVisible();
+}
+
+float UPatrolEquipmentComponent::UpdateManualReading(float DeltaTime)
+{
+    if (bManualReading)
+    {
+        ManualReadProgress = FMath::Min(1.f, ManualReadProgress + DeltaTime / ManualReadEnterDuration);
+        return 0.f;
+    }
+
+    const float TimeToClose = ManualReadProgress * ManualReadExitDuration;
+    if (DeltaTime < TimeToClose)
+    {
+        ManualReadProgress -= DeltaTime / ManualReadExitDuration;
+        return 0.f;
+    }
+
+    ManualReadProgress = 0.f;
+    // The normal unequip starts once the book has returned to its carry pose.
+    return DeltaTime - TimeToClose;
 }
 
 void UPatrolEquipmentComponent::UpdateEquipmentTransition(float DeltaTime)
@@ -192,10 +233,15 @@ void UPatrolEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     if (PC->WasInputKeyJustPressed(EKeys::One)) SelectHandSlot(1);
     if (PC->WasInputKeyJustPressed(EKeys::Two)) SelectHandSlot(2);
     if (PC->WasInputKeyJustPressed(EKeys::Three)) SelectHandSlot(3);
-    if (PC->WasInputKeyJustPressed(EKeys::LeftMouseButton)) ToggleFlashlight();
+    if (PC->WasInputKeyJustPressed(EKeys::LeftMouseButton))
+    {
+        if (HandSlot == 2) ToggleManualReading();
+        else ToggleFlashlight();
+    }
     bSprinting = PC->IsInputKeyDown(EKeys::LeftShift);
     Character->GetCharacterMovement()->MaxWalkSpeed = bSprinting ? SprintSpeed : WalkSpeed;
-    UpdateEquipmentTransition(DeltaTime);
+    const float EquipmentDeltaTime = UpdateManualReading(DeltaTime);
+    if (ManualReadProgress == 0.f) UpdateEquipmentTransition(EquipmentDeltaTime);
     UpdateEquipmentView(DeltaTime);
 }
 
@@ -229,11 +275,22 @@ void UPatrolEquipmentComponent::UpdateEquipmentView(float DeltaTime)
     if (bShowingNotebook) HeldRotation.Pitch = FMath::Max(FRotator::NormalizeAxis(HeldRotation.Pitch), -25.f);
     const double LookDown = bShowingNotebook ? FMath::Clamp((-FRotator::NormalizeAxis(CameraRotation.Pitch) - 25.0) / 60.0, 0.0, 1.0) : 0.0;
     const double NotebookBlend = FMath::SmoothStep(0.0, 1.0, LookDown);
-    const double Amount = FMath::Clamp(Character->GetVelocity().Size2D() / SprintSpeed, 0.0, 1.0);
+    const double ReadAmount = bShowingNotebook ? FMath::SmoothStep(0.0, 1.0, static_cast<double>(ManualReadProgress)) : 0.0;
+    const double Amount = FMath::Clamp(Character->GetVelocity().Size2D() / SprintSpeed, 0.0, 1.0)
+        * FMath::Lerp(1.0, ManualReadSwayScale, ReadAmount);
     const FVector BobOffset(0.0, FMath::Sin(BobPhase) * .45 * Amount, FMath::Cos(BobPhase * 2.f) * .5 * Amount);
     const FVector HeldLocation = CameraTransform.TransformPosition(BobOffset)
         + HeldRotation.RotateVector(FVector(-14.0, 0.0, -20.0) * NotebookBlend);
     FTransform HeldPose(HeldRotation, HeldLocation);
+    if (ReadAmount > 0.0)
+    {
+        // Preserve the carry pose's chest clearance at steep viewing angles.
+        const double PoseWeight = ReadAmount * (1.0 - NotebookBlend)
+            * (1.0 - FMath::SmoothStep(55.0, 75.0, CameraRotation.Pitch));
+        const FVector ReadCenter = HeldPose.TransformPosition(BookCenter + ManualReadLocationOffset * PoseWeight);
+        HeldPose.ConcatenateRotation((ManualReadRotationOffset * PoseWeight).Quaternion());
+        HeldPose.SetLocation(ReadCenter - HeldPose.TransformVectorNoScale(BookCenter));
+    }
 
     const FBoxSphereBounds Bounds = HeldMesh->GetBounds();
     const FCollisionShape Shape = FCollisionShape::MakeBox(Bounds.BoxExtent + FVector(.5));

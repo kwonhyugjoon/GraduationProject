@@ -1,4 +1,5 @@
 #include "PatrolEquipmentHUDSubsystem.h"
+#include "SPatrolManualReadingWidget.h"
 
 #include "../PatrolEquipmentComponent.h"
 #include "Brushes/SlateColorBrush.h"
@@ -60,6 +61,7 @@ public:
     SLATE_BEGIN_ARGS(SPatrolEquipmentHUD) {}
         SLATE_ARGUMENT(APlayerController*, Controller)
         SLATE_ARGUMENT(TConstArrayView<TObjectPtr<UTexture2D>>, Textures)
+        SLATE_ARGUMENT(UTexture2D*, ManualBookFrame)
     SLATE_END_ARGS()
 
     void Construct(const FArguments& Args)
@@ -97,23 +99,31 @@ public:
             ];
         }
 
-        ChildSlot
-        [
-            SNew(SOverlay)
-            + SOverlay::Slot().Padding(FMargin(24, 24, 38, 34))
+        const TSharedRef<SOverlay> Overlay = SNew(SOverlay);
+        if (Args._ManualBookFrame)
+        {
+            Overlay->AddSlot()
             [
-                SAssignNew(Panel, SScaleBox)
-                .HAlign(HAlign_Right)
-                .VAlign(VAlign_Bottom)
-                .Stretch(EStretch::ScaleToFit)
-                .StretchDirection(EStretchDirection::DownOnly)
+                SAssignNew(ManualReading, SPatrolManualReadingWidget)
+                .BookFrame(Args._ManualBookFrame)
                 .Visibility(EVisibility::Collapsed)
-                [
-                    Row
-                ]
+            ];
+        }
+
+        Overlay->AddSlot().Padding(FMargin(24, 24, 38, 34))
+        [
+            SAssignNew(Panel, SScaleBox)
+            .HAlign(HAlign_Right)
+            .VAlign(VAlign_Bottom)
+            .Stretch(EStretch::ScaleToFit)
+            .StretchDirection(EStretchDirection::DownOnly)
+            .Visibility(EVisibility::Collapsed)
+            [
+                Row
             ]
         ];
 
+        ChildSlot[Overlay];
         RefreshState();
     }
 
@@ -269,6 +279,17 @@ private:
         }
 
         const UPatrolEquipmentComponent* CurrentEquipment = ObservedPawn.IsValid() ? Equipment.Get() : nullptr;
+        const bool bShowManual = ManualReading.IsValid() && CurrentEquipment && CurrentEquipment->IsManualReadingReady();
+        if (ManualReading.IsValid())
+        {
+            const EVisibility ManualVisibility = bShowManual ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+            if (ManualReading->GetVisibility() != ManualVisibility) ManualReading->SetVisibility(ManualVisibility);
+        }
+
+        const EVisibility EquipmentVisibility = CurrentEquipment && !bShowManual
+            ? EVisibility::Visible : EVisibility::Collapsed;
+        if (Panel->GetVisibility() != EquipmentVisibility) Panel->SetVisibility(EquipmentVisibility);
+
         const int32 Slot = CurrentEquipment ? CurrentEquipment->GetHandSlot() : 0;
         const bool bFlashlightOn = CurrentEquipment && CurrentEquipment->IsFlashlightOn();
         if (Slot == DisplayedSlot && bFlashlightOn == bDisplayedFlashlightOn) return;
@@ -276,7 +297,6 @@ private:
         if (Slot != DisplayedSlot)
         {
             DisplayedSlot = Slot;
-            Panel->SetVisibility(CurrentEquipment ? EVisibility::Visible : EVisibility::Collapsed);
             FlashlightStatus->SetVisibility(Slot == 1 ? EVisibility::Visible : EVisibility::Collapsed);
 
             for (int32 Index = 0; Index < UE_ARRAY_COUNT(Slots); ++Index)
@@ -300,6 +320,7 @@ private:
     TWeakObjectPtr<APlayerController> Controller;
     TWeakObjectPtr<APawn> ObservedPawn;
     TWeakObjectPtr<UPatrolEquipmentComponent> Equipment;
+    TSharedPtr<SPatrolManualReadingWidget> ManualReading;
     TSharedPtr<SScaleBox> Panel;
     FSlotWidgets Slots[3];
     TSharedPtr<SBox> FlashlightStatus;
@@ -325,6 +346,7 @@ void UPatrolEquipmentHUDSubsystem::PlayerControllerChanged(APlayerController* Ne
     HUD = SNew(SPatrolEquipmentHUD)
         .Controller(NewPlayerController)
         .Textures(HUDTextures)
+        .ManualBookFrame(ManualBookFrame.Get())
         .Visibility(EVisibility::HitTestInvisible);
     HUDViewport = Viewport;
     Viewport->AddViewportWidgetForPlayer(LocalPlayer, HUD.ToSharedRef(), 0);
@@ -344,6 +366,14 @@ void UPatrolEquipmentHUDSubsystem::LoadHUDTextures()
             UE_LOG(LogTemp, Warning, TEXT("Patrol equipment HUD could not load Texture2D %s"), *Path);
         }
         HUDTextures.Add(Texture);
+    }
+
+    static constexpr TCHAR ManualBookFramePath[] = TEXT("/Game/UI/Manual/T_Manual_BookFrame.T_Manual_BookFrame");
+    ManualBookFrame = LoadObject<UTexture2D>(nullptr, ManualBookFramePath);
+    if (!ManualBookFrame || ManualBookFrame->GetSizeX() <= 0 || ManualBookFrame->GetSizeY() <= 0)
+    {
+        ManualBookFrame = nullptr;
+        UE_LOG(LogTemp, Warning, TEXT("Patrol manual HUD could not load a usable Texture2D %s"), ManualBookFramePath);
     }
 }
 
