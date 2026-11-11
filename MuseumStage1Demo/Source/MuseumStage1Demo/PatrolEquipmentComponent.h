@@ -54,7 +54,19 @@ public:
     void ToggleFlashlight();
 
 private:
+    enum class EEquipmentTransition : uint8
+    {
+        Idle,
+        Unequipping,
+        Equipping
+    };
+
+    void UpdateEquipmentTransition(float DeltaTime);
+    void UpdateEquipmentView(float DeltaTime);
+    void SwitchDisplayedEquipment();
     void RefreshEquipment();
+    void RefreshFlashlight();
+    bool WantsFlashlightBeam() const;
     UPROPERTY(Transient) TObjectPtr<ACharacter> Character;
     UPROPERTY(Transient) TObjectPtr<UCameraComponent> Camera;
     UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> Body;
@@ -63,6 +75,10 @@ private:
     UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> NotebookView;
     UPROPERTY(Transient) TObjectPtr<USpotLightComponent> FlashlightBeam;
     UPROPERTY(Transient) TObjectPtr<UPointLightComponent> HandFill;
+    int32 DisplayedHandSlot = 1;
+    EEquipmentTransition TransitionState = EEquipmentTransition::Idle;
+    float LowerProgress = 0.f;
     float BobPhase = 0.f;
-    float WallOffset = 0.f;
+    double WallRetraction = 0.0;
+    double WallProximity = 0.0;
 };

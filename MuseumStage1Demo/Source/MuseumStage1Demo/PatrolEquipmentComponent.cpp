@@ -5,11 +5,34 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
+
+namespace
+{
+constexpr float UnequipDuration = .15f;
+constexpr float EquipDuration = .20f;
+const FVector LoweredViewOffset(-16.f, 0.f, -35.f);
+constexpr float LoweredPitch = -15.f;
+constexpr double MaxWallRetraction = 36.0;
+constexpr double MinHeldItemDepth = 14.0;
+constexpr double WallInterpSpeed = 18.0;
+constexpr double BookChestClearance = 35.0;
+const FVector BookCenter(46.2, 0.0, -13.0);
+const FVector BookExtent(1.8, 11.4, 12.0);
+
+struct FEquipmentClearance
+{
+    FVector TowardCamera = FVector::ZeroVector;
+    double Budget = 0.0;
+    double Required = 0.0;
+    bool bHasRoom = false;
+};
+}
 
 UPatrolEquipmentComponent::UPatrolEquipmentComponent()
 {
@@ -42,6 +65,7 @@ void UPatrolEquipmentComponent::BeginPlay()
         View->SetOnlyOwnerSee(true);
         View->SetCastShadow(false);
         View->SetLightingChannels(true, true, false);
+        View->SetVisibility(false);
         View->RegisterComponent();
         for (int32 Index = 0; Index < View->GetNumMaterials(); ++Index) View->CreateDynamicMaterialInstance(Index);
         return View;
@@ -67,38 +91,96 @@ void UPatrolEquipmentComponent::BeginPlay()
     FlashlightBeam->SetCastShadows(true);
     FlashlightBeam->SetRelativeLocation(FVector(55.14f, 14.f, -12.48f));
     FlashlightBeam->SetRelativeRotation(FRotator(10.f, 0.f, 0.f));
+    FlashlightBeam->SetVisibility(false);
     FlashlightBeam->RegisterComponent();
+    DisplayedHandSlot = HandSlot;
     RefreshEquipment();
 }
 
 void UPatrolEquipmentComponent::SelectHandSlot(int32 Slot)
 {
-    if (Slot < 1 || Slot > 3) return;
+    if (Slot < 1 || Slot > 3 || Slot == HandSlot) return;
     HandSlot = Slot;
-    RefreshEquipment();
+    RefreshFlashlight();
 }
 
 void UPatrolEquipmentComponent::ToggleFlashlight()
 {
     if (HandSlot != 1) return;
     bFlashlightOn = !bFlashlightOn;
+    RefreshFlashlight();
+}
+
+void UPatrolEquipmentComponent::UpdateEquipmentTransition(float DeltaTime)
+{
+    if (DisplayedHandSlot != HandSlot)
+    {
+        if (DisplayedHandSlot == 3) SwitchDisplayedEquipment();
+        else TransitionState = EEquipmentTransition::Unequipping;
+    }
+    else if (TransitionState == EEquipmentTransition::Unequipping)
+    {
+        // Reselecting the outgoing item reverses from its current pose.
+        TransitionState = EEquipmentTransition::Equipping;
+    }
+
+    if (TransitionState == EEquipmentTransition::Unequipping)
+    {
+        const float TimeToLower = (1.f - LowerProgress) * UnequipDuration;
+        if (DeltaTime < TimeToLower)
+        {
+            LowerProgress += DeltaTime / UnequipDuration;
+            return;
+        }
+
+        DeltaTime -= TimeToLower;
+        SwitchDisplayedEquipment();
+    }
+
+    if (TransitionState == EEquipmentTransition::Equipping)
+    {
+        LowerProgress = FMath::Max(0.f, LowerProgress - DeltaTime / EquipDuration);
+        if (LowerProgress == 0.f) TransitionState = EEquipmentTransition::Idle;
+    }
+}
+
+void UPatrolEquipmentComponent::SwitchDisplayedEquipment()
+{
+    DisplayedHandSlot = HandSlot;
+    const bool bHasHeldItem = DisplayedHandSlot != 3;
+    LowerProgress = bHasHeldItem ? 1.f : 0.f;
+    TransitionState = bHasHeldItem ? EEquipmentTransition::Equipping : EEquipmentTransition::Idle;
     RefreshEquipment();
 }
 
 void UPatrolEquipmentComponent::RefreshEquipment()
 {
-    if (!FlashlightView || !NotebookView || !FlashlightBeam) return;
-    FlashlightView->SetVisibility(HandSlot == 1);
-    NotebookView->SetVisibility(HandSlot == 2);
-    FlashlightBeam->SetVisibility(HandSlot == 1 && bFlashlightOn);
-    FlashlightView->SetScalarParameterValueOnMaterials(TEXT("LampGlow"), HandSlot == 1 && bFlashlightOn ? 1.f : 0.f);
+    if (!FlashlightView || !NotebookView) return;
+    // The active mesh is shown after its new pose has passed clearance.
+    FlashlightView->SetVisibility(false);
+    NotebookView->SetVisibility(false);
+    RefreshFlashlight();
     if (Body)
     {
-        if (HandSlot == 1 || HandSlot == 2) Body->HideBoneByName(TEXT("upperarm_r"), EPhysBodyOp::PBO_None);
+        if (DisplayedHandSlot == 1 || DisplayedHandSlot == 2) Body->HideBoneByName(TEXT("upperarm_r"), EPhysBodyOp::PBO_None);
         else Body->UnHideBoneByName(TEXT("upperarm_r"));
-        if (HandSlot == 2) Body->HideBoneByName(TEXT("upperarm_l"), EPhysBodyOp::PBO_None);
+        if (DisplayedHandSlot == 2) Body->HideBoneByName(TEXT("upperarm_l"), EPhysBodyOp::PBO_None);
         else Body->UnHideBoneByName(TEXT("upperarm_l"));
     }
+}
+
+void UPatrolEquipmentComponent::RefreshFlashlight()
+{
+    if (!FlashlightView || !FlashlightBeam) return;
+    const bool bWantsLight = WantsFlashlightBeam();
+    // Only the view update enables the beam, after setting its swept origin.
+    if (!bWantsLight) FlashlightBeam->SetVisibility(false);
+    FlashlightView->SetScalarParameterValueOnMaterials(TEXT("LampGlow"), bWantsLight ? 1.f : 0.f);
+}
+
+bool UPatrolEquipmentComponent::WantsFlashlightBeam() const
+{
+    return HandSlot == 1 && DisplayedHandSlot == 1 && bFlashlightOn;
 }
 
 void UPatrolEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -113,34 +195,137 @@ void UPatrolEquipmentComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     if (PC->WasInputKeyJustPressed(EKeys::LeftMouseButton)) ToggleFlashlight();
     bSprinting = PC->IsInputKeyDown(EKeys::LeftShift);
     Character->GetCharacterMovement()->MaxWalkSpeed = bSprinting ? SprintSpeed : WalkSpeed;
+    UpdateEquipmentTransition(DeltaTime);
+    UpdateEquipmentView(DeltaTime);
+}
 
-    const FTransform CameraTransform = Camera->GetComponentTransform();
-    FRotator HeldRotation = CameraTransform.Rotator();
-    // Keep the book in front of the chest while the camera can still look at the feet.
-    if (HandSlot == 2) HeldRotation.Pitch = FMath::Max(FRotator::NormalizeAxis(HeldRotation.Pitch), -25.f);
-    const float LookDown = HandSlot == 2 ? FMath::Clamp((-FRotator::NormalizeAxis(CameraTransform.Rotator().Pitch) - 25.f) / 60.f, 0.f, 1.f) : 0.f;
-    const float NotebookBlend = LookDown * LookDown * (3.f - 2.f * LookDown);
-    const FTransform HeldTransform(HeldRotation, CameraTransform.GetLocation());
-    ViewRoot->SetWorldRotation(HeldRotation);
-    FCollisionQueryParams Query(SCENE_QUERY_STAT(PatrolEquipmentClearance), false, Character);
-    FHitResult Hit;
-    const FVector Start = CameraTransform.GetLocation();
-    const FVector End = HeldTransform.TransformPosition(FVector(90.f, 0.f, -10.f));
-    const bool bWall = GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_Camera,
-        FCollisionShape::MakeSphere(6.f), Query);
-    const float TargetOffset = bWall ? FMath::Clamp(Hit.Distance - 90.f, -80.f, 0.f) : 0.f;
-    WallOffset = FMath::FInterpTo(WallOffset, TargetOffset, DeltaTime, 18.f);
-    NotebookView->SetVisibility(HandSlot == 2 && WallOffset > FMath::Lerp(-8.f, -1.f, NotebookBlend));
-    const float Speed = Character->GetVelocity().Size2D();
+void UPatrolEquipmentComponent::UpdateEquipmentView(float DeltaTime)
+{
     BobPhase += DeltaTime * (bSprinting ? 12.f : 8.f);
-    const float Amount = FMath::Clamp(Speed / SprintSpeed, 0.f, 1.f);
-    const FVector ViewOffset(WallOffset, FMath::Sin(BobPhase) * .45f * Amount,
-        WallOffset * .35f + FMath::Cos(BobPhase * 2.f) * .5f * Amount);
-    ViewRoot->SetWorldLocation(CameraTransform.TransformPosition(ViewOffset)
-        + HeldRotation.RotateVector(FVector(-14.f, 0.f, -20.f) * NotebookBlend));
-    const FVector IntendedLight = CameraTransform.TransformPosition(ViewRoot->GetRelativeLocation() + FVector(55.14f, 14.f, -12.48f));
-    if (GetWorld()->SweepSingleByChannel(Hit, Start, IntendedLight, FQuat::Identity, ECC_Camera,
-        FCollisionShape::MakeSphere(3.f), Query)) FlashlightBeam->SetWorldLocation(Hit.Location);
-    else FlashlightBeam->SetWorldLocation(IntendedLight);
-    FlashlightBeam->SetWorldRotation((CameraTransform.GetRotation() * FRotator(10.f, 0.f, 0.f).Quaternion()).Rotator());
+    if (DisplayedHandSlot == 3 && TransitionState == EEquipmentTransition::Idle)
+    {
+        WallRetraction = 0.0;
+        WallProximity = 0.0;
+        return;
+    }
+
+    const bool bShowingNotebook = DisplayedHandSlot == 2;
+    UStaticMeshComponent* HeldView = bShowingNotebook ? NotebookView.Get() : FlashlightView.Get();
+    UStaticMesh* HeldMesh = HeldView->GetStaticMesh();
+    if (!HeldMesh)
+    {
+        HeldView->SetVisibility(false);
+        FlashlightBeam->SetVisibility(false);
+        return;
+    }
+
+    UWorld* World = GetWorld();
+    const FTransform CameraTransform = Camera->GetComponentTransform();
+    const FVector CameraLocation = CameraTransform.GetLocation();
+    const FVector CameraForward = CameraTransform.GetUnitAxis(EAxis::X);
+    const FRotator CameraRotation = CameraTransform.Rotator();
+    FRotator HeldRotation = CameraRotation;
+    // Keep the book in front of the chest while the camera can still look at the feet.
+    if (bShowingNotebook) HeldRotation.Pitch = FMath::Max(FRotator::NormalizeAxis(HeldRotation.Pitch), -25.f);
+    const double LookDown = bShowingNotebook ? FMath::Clamp((-FRotator::NormalizeAxis(CameraRotation.Pitch) - 25.0) / 60.0, 0.0, 1.0) : 0.0;
+    const double NotebookBlend = FMath::SmoothStep(0.0, 1.0, LookDown);
+    const double Amount = FMath::Clamp(Character->GetVelocity().Size2D() / SprintSpeed, 0.0, 1.0);
+    const FVector BobOffset(0.0, FMath::Sin(BobPhase) * .45 * Amount, FMath::Cos(BobPhase * 2.f) * .5 * Amount);
+    const FVector HeldLocation = CameraTransform.TransformPosition(BobOffset)
+        + HeldRotation.RotateVector(FVector(-14.0, 0.0, -20.0) * NotebookBlend);
+    FTransform HeldPose(HeldRotation, HeldLocation);
+
+    const FBoxSphereBounds Bounds = HeldMesh->GetBounds();
+    const FCollisionShape Shape = FCollisionShape::MakeBox(Bounds.BoxExtent + FVector(.5));
+    const FVector ItemAnchor = bShowingNotebook ? BookCenter : FVector(42.0, 14.0, -14.0);
+    FCollisionQueryParams Query(SCENE_QUERY_STAT(PatrolEquipmentClearance), false, Character);
+    Query.bFindInitialOverlaps = true;
+
+    auto SweepPose = [&](const FTransform& Pose)
+    {
+        FEquipmentClearance Clearance;
+        const FVector Anchor = Pose.TransformPosition(ItemAnchor);
+        const FVector EyeToItem = Anchor - CameraLocation;
+        // Retract along the viewing ray to keep the item in roughly the same screen position.
+        Clearance.TowardCamera = -EyeToItem.GetSafeNormal();
+        const double Depth = FVector::DotProduct(EyeToItem, CameraForward);
+        const double DepthPerCm = FVector::DotProduct(-Clearance.TowardCamera, CameraForward);
+        if (DepthPerCm > UE_SMALL_NUMBER)
+        {
+            Clearance.Budget = FMath::Clamp((Depth - MinHeldItemDepth) / DepthPerCm, 0.0, MaxWallRetraction);
+        }
+
+        const FQuat Rotation = Pose.GetRotation();
+        if (bShowingNotebook)
+        {
+            const FVector BodyForward = Character->GetActorForwardVector();
+            const double BookDepth = FVector::DotProduct(Anchor - Character->GetActorLocation(), BodyForward)
+                - FMath::Abs(FVector::DotProduct(Rotation.GetAxisX(), BodyForward)) * BookExtent.X
+                - FMath::Abs(FVector::DotProduct(Rotation.GetAxisY(), BodyForward)) * BookExtent.Y
+                - FMath::Abs(FVector::DotProduct(Rotation.GetAxisZ(), BodyForward)) * BookExtent.Z;
+            // At steep camera pitch even the lowering motion can take the book through the chest.
+            if (BookDepth < BookChestClearance) return FEquipmentClearance{};
+
+            const double TowardChest = -FVector::DotProduct(Clearance.TowardCamera, BodyForward);
+            if (TowardChest > UE_SMALL_NUMBER)
+            {
+                Clearance.Budget = FMath::Min(Clearance.Budget, (BookDepth - BookChestClearance) / TowardChest);
+            }
+        }
+
+        const FVector DesiredCenter = Pose.TransformPosition(Bounds.Origin);
+        if (Clearance.Budget <= UE_KINDA_SMALL_NUMBER)
+        {
+            Clearance.bHasRoom = !World->OverlapBlockingTestByChannel(DesiredCenter, Rotation, ECC_Camera, Shape, Query);
+            return Clearance;
+        }
+
+        const FVector TuckedCenter = DesiredCenter + Clearance.TowardCamera * Clearance.Budget;
+        FHitResult Hit;
+        const bool bBlocked = World->SweepSingleByChannel(Hit, TuckedCenter, DesiredCenter, Rotation, ECC_Camera, Shape, Query);
+        Clearance.bHasRoom = !bBlocked || !Hit.bStartPenetrating;
+        Clearance.Required = bBlocked ? Clearance.Budget * (1.0 - Hit.Time) : 0.0;
+        return Clearance;
+    };
+
+    FEquipmentClearance Clearance = SweepPose(HeldPose);
+    const double ProximityTarget = !Clearance.bHasRoom ? 1.0
+        : Clearance.Budget > UE_KINDA_SMALL_NUMBER ? Clearance.Required / Clearance.Budget : 0.0;
+    WallProximity = FMath::FInterpTo(WallProximity, ProximityTarget, DeltaTime, WallInterpSpeed);
+
+    const float LowerAmount = FMath::Square(LowerProgress);
+    if (LowerAmount > 0.f)
+    {
+        FVector TransitionOffset = LoweredViewOffset * LowerAmount;
+        TransitionOffset.X *= 1.0 - FMath::SmoothStep(0.0, 1.0, WallProximity);
+        HeldPose.AddToTranslation(CameraTransform.TransformVectorNoScale(TransitionOffset));
+        HeldPose.ConcatenateRotation(FRotator(LoweredPitch * LowerAmount, 0.f, 0.f).Quaternion());
+        Clearance = SweepPose(HeldPose);
+    }
+
+    // Obstructions clamp immediately. Releasing the retraction can be smoothed inside the safe path.
+    WallRetraction = FMath::Clamp(FMath::FInterpTo(WallRetraction, Clearance.Required, DeltaTime, WallInterpSpeed),
+        Clearance.Required, Clearance.Budget);
+    ViewRoot->SetWorldLocationAndRotation(HeldPose.GetLocation() + Clearance.TowardCamera * WallRetraction, HeldPose.GetRotation());
+    HeldView->SetVisibility(Clearance.bHasRoom);
+
+    if (!HeldView->IsVisible() || !WantsFlashlightBeam())
+    {
+        FlashlightBeam->SetVisibility(false);
+        return;
+    }
+
+    const FVector IntendedLight = ViewRoot->GetComponentTransform().TransformPosition(FVector(55.14f, 14.f, -12.48f));
+    FHitResult BeamHit;
+    const bool bBeamBlocked = World->SweepSingleByChannel(BeamHit, CameraLocation, IntendedLight, FQuat::Identity, ECC_Camera,
+        FCollisionShape::MakeSphere(3.f), Query);
+    if (bBeamBlocked && BeamHit.bStartPenetrating)
+    {
+        FlashlightBeam->SetVisibility(false);
+        return;
+    }
+
+    FlashlightBeam->SetWorldLocationAndRotation(bBeamBlocked ? FVector(BeamHit.Location) : IntendedLight,
+        CameraTransform.GetRotation() * FRotator(10.f, 0.f, 0.f).Quaternion());
+    FlashlightBeam->SetVisibility(true);
 }
