@@ -46,9 +46,13 @@ const TCHAR* const TextureNames[] = {
 };
 static_assert(UE_ARRAY_COUNT(TextureNames) == TextureCount);
 
-constexpr float SlotSize = 132.0f;
+constexpr float SlotSize = 142.0f;
 constexpr float SelectedSlotSize = SlotSize * 1.12f;
 constexpr float SlotGap = 8.0f;
+constexpr float StatusWidth = 159.0f;
+constexpr float StatusHeight = StatusWidth / 6.0f;
+constexpr float StatusGap = 6.0f;
+constexpr float EmptyHandIconOpacity = 0.30f;
 
 const FLinearColor Gold = FLinearColor::FromSRGBColor(FColor(255, 195, 93));
 const FLinearColor Brass = FLinearColor::FromSRGBColor(FColor(153, 119, 73));
@@ -72,14 +76,17 @@ public:
         const FText Names[] = {
             LOCTEXT("FlashlightSlot", "손전등"),
             LOCTEXT("NotebookSlot", "업무지침서"),
-            LOCTEXT("RelicSlot", "유물")
+            LOCTEXT("EmptyHandSlot", "빈손")
         };
-        constexpr EEquipmentHUDTexture Icons[] = { IconFlashlight, IconManual, IconArtifact };
+        const FSlateBrush* const Icons[] = {
+            GetTextureBrush(IconFlashlight), GetTextureBrush(IconManual), GetTextureBrush(IconArtifact)
+        };
         const TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
         for (int32 Index = 0; Index < UE_ARRAY_COUNT(Slots); ++Index)
         {
             TSharedRef<SWidget> Column = CreateEquipmentSlot(
-                Slots[Index], FText::AsNumber(Index + 1), Icons[Index], Names[Index]);
+                Slots[Index], FText::AsNumber(Index + 1), Icons[Index], Names[Index],
+                Index == 2 ? EmptyHandIconOpacity : 1.0f);
             if (Index == 0)
             {
                 Column = SNew(SVerticalBox)
@@ -153,16 +160,28 @@ private:
         }
 
         // Trim transparent source margins without resizing or editing the textures.
-        const FVector2f FrameSourceSize(1448, 1086);
-        TextureBrushes[SlotNormal].SetUVRegion(FBox2f(
-            FVector2f(212, 25) / FrameSourceSize, FVector2f(1232, 1045) / FrameSourceSize));
-        TextureBrushes[SlotSelected].SetUVRegion(FBox2f(
-            FVector2f(247, 55) / FrameSourceSize, FVector2f(1197, 1005) / FrameSourceSize));
+        const auto SetArtworkRegion = [this](EEquipmentHUDTexture Id, FVector2f SourceSize,
+            FVector2f Min, FVector2f Max, float IconHeight = 0.0f)
+        {
+            FSlateBrush& Brush = TextureBrushes[Id];
+            Brush.SetUVRegion(FBox2f(Min / SourceSize, Max / SourceSize));
+            if (IconHeight > 0.0f)
+            {
+                const FVector2f ArtworkSize = Max - Min;
+                Brush.SetImageSize(ArtworkSize * (IconHeight / ArtworkSize.Y));
+            }
+        };
 
-        const FVector2f StatusSourceSize(2172, 724);
-        const FBox2f StatusUV(FVector2f(250, 69) / StatusSourceSize, FVector2f(1922, 626) / StatusSourceSize);
-        TextureBrushes[StatusOn].SetUVRegion(StatusUV);
-        TextureBrushes[StatusOff].SetUVRegion(StatusUV);
+        const FVector2f SquareSource(1254, 1254);
+        SetArtworkRegion(SlotNormal, SquareSource, {271, 276}, {984, 977});
+        SetArtworkRegion(SlotSelected, SquareSource, {248, 246}, {1004, 1008});
+        SetArtworkRegion(IconFlashlight, SquareSource, {337, 292}, {868, 945}, 64.0f);
+        SetArtworkRegion(IconManual, SquareSource, {352, 349}, {905, 949}, 60.0f);
+        SetArtworkRegion(IconArtifact, SquareSource, {346, 298}, {908, 962}, 62.0f);
+
+        const FVector2f StatusSource(2172, 724);
+        SetArtworkRegion(StatusOn, StatusSource, {289, 217}, {1883, 505});
+        SetArtworkRegion(StatusOff, StatusSource, {405, 248}, {1767, 476});
     }
 
     const FSlateBrush* GetTextureBrush(EEquipmentHUDTexture Id, const FSlateBrush* Fallback = nullptr) const
@@ -172,7 +191,7 @@ private:
     }
 
     TSharedRef<SWidget> CreateEquipmentSlot(FSlotWidgets& Slot, const FText& Key,
-        EEquipmentHUDTexture Icon, const FText& Name)
+        const FSlateBrush* Icon, const FText& Name, float IconOpacity)
     {
         static const FSlateColorBrush SolidBrush(FLinearColor::White);
 
@@ -184,10 +203,10 @@ private:
                 SAssignNew(Slot.Size, SBox)
                 [
                     SAssignNew(Slot.Frame, SBorder)
-                    .Padding(FMargin(15, 16, 15, 17))
+                    .Padding(FMargin(10, 14, 10, 15))
                     [
                         SNew(SOverlay)
-                        + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top)
+                        + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(4, 0, 0, 0)
                         [
                             SAssignNew(Slot.KeyBadge, SBorder)
                             .BorderImage(&SolidBrush)
@@ -202,20 +221,27 @@ private:
                                 ]
                             ]
                         ]
-                        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(0, 0, 0, 8)
+                        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(0, 0, 0, 18)
                         [
-                            SNew(SBox).WidthOverride(76).HeightOverride(76)
+                            SNew(SBox).WidthOverride(68).HeightOverride(64)
                             [
                                 SNew(SScaleBox).Stretch(EStretch::ScaleToFit).HAlign(HAlign_Center).VAlign(VAlign_Center)
                                 [
-                                    SNew(SImage).Image(GetTextureBrush(Icon))
+                                    SNew(SImage).Image(Icon)
+                                    .ColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, IconOpacity))
+                                    .Visibility(Icon ? EVisibility::Visible : EVisibility::Hidden)
                                 ]
                             ]
                         ]
-                        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom)
+                        + SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Bottom)
                         [
-                            SAssignNew(Slot.Name, STextBlock).Text(Name)
-                            .Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
+                            SNew(SScaleBox)
+                            .HAlign(HAlign_Center).VAlign(VAlign_Center)
+                            .Stretch(EStretch::ScaleToFitX).StretchDirection(EStretchDirection::DownOnly)
+                            [
+                                SAssignNew(Slot.Name, STextBlock).Text(Name)
+                                .Font(FCoreStyle::GetDefaultFontStyle("Bold", 18))
+                            ]
                         ]
                     ]
                 ]
@@ -241,28 +267,26 @@ private:
 
     TSharedRef<SWidget> CreateFlashlightStatus()
     {
-        static const FSlateRoundedBoxBrush IndicatorBrush(FLinearColor::White, 5.0f, FVector2f(10, 10));
-        constexpr float BottomGap = 6.0f;
+        static const FSlateRoundedBoxBrush IndicatorBrush(FLinearColor::White, 1.5f, FVector2f(3, 10));
 
-        return SAssignNew(FlashlightStatus, SBox)
-            .WidthOverride(SelectedSlotSize)
-            .HeightOverride(SelectedSlotSize / 3.0f + BottomGap)
-            .Padding(FMargin(0, 0, 0, BottomGap))
-            .Visibility(EVisibility::Collapsed)
+        return SNew(SBox)
+            .WidthOverride(StatusWidth).HeightOverride(StatusHeight + StatusGap)
+            .Padding(FMargin(0, 0, 0, StatusGap))
             [
-                SAssignNew(FlashlightFrame, SBorder)
-                .HAlign(HAlign_Center).VAlign(VAlign_Center)
-                .Padding(0)
+                SAssignNew(FlashlightStatus, SBox).Visibility(EVisibility::Collapsed)
                 [
-                    SNew(SHorizontalBox)
-                    + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
+                    SAssignNew(FlashlightFrame, SBorder).Padding(0)
                     [
-                        SAssignNew(FlashlightIndicator, SImage).Image(&IndicatorBrush)
-                    ]
-                    + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-                    [
-                        SAssignNew(FlashlightText, STextBlock)
-                        .Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+                        SNew(SOverlay)
+                        + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(9, 0, 0, 0)
+                        [
+                            SAssignNew(FlashlightIndicator, SImage).Image(&IndicatorBrush)
+                        ]
+                        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
+                        [
+                            SAssignNew(FlashlightText, STextBlock)
+                            .Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+                        ]
                     ]
                 ]
             ];
